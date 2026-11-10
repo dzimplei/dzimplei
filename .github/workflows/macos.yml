@@ -1,0 +1,203 @@
+name: macos
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Exact dzimplei-source commit to stage as 0.8.11"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+    env:
+      DZ_BASE: /dzimplei/
+      DZ_SIGN_IDENTITY: "Developer ID Application: Jessica Etzel (295SBJ736K)"
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - name: Require an immutable source revision and Apple silicon
+        env:
+          SOURCE_REF: ${{ inputs.ref }}
+        run: |
+          [[ "$SOURCE_REF" =~ ^[0-9a-f]{40}$ ]]
+          test "$(uname -m)" = arm64
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: dzimplei/dzimplei-source
+          ref: ${{ inputs.ref }}
+          ssh-key: ${{ secrets.SOURCE_DEPLOY_KEY }}
+          persist-credentials: false
+          submodules: recursive
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Verify source version and revision
+        env:
+          SOURCE_REF: ${{ inputs.ref }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$SOURCE_REF"
+          test "$(node -p "require('./package.json').version")" = 0.8.11
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: 1.95.0
+          targets: aarch64-apple-darwin
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29
+        with:
+          version: 0.16.0
+      - name: Build the pinned terminal runtime
+        run: |
+          cargo build --manifest-path third_party/herdr-core/Cargo.toml --release --locked --target aarch64-apple-darwin -p herdr-core
+          mkdir -p build
+          cp third_party/herdr-core/target/aarch64-apple-darwin/release/herdr-core build/herdr-core
+          cp third_party/herdr-core/LICENSE build/herdr-core.LICENSE
+          build/herdr-core --licenses > build/herdr-core.NOTICES
+          printf 'source=%s\nghostty=%s\nrust=1.95.0\nzig=0.16.0\nprotocol=1\ntarget=aarch64-apple-darwin\n' \
+            "$(git -C third_party/herdr-core rev-parse HEAD)" \
+            "$(git -C third_party/herdr-core/vendor/ghostty rev-parse HEAD)" > build/herdr-core.SOURCE
+          HERDR_TEST_BINARY="$PWD/build/herdr-core" node --test server/herdrTerminal.test.mjs
+      - run: npm ci
+      - name: Build the application and native Mac helpers
+        run: |
+          node scripts/fetch-peekaboo.mjs
+          xcrun swiftc -O electron/jim-fn.swift -o build/jim-fn
+          test "$(build/jim-fn --self-test)" = "$(printf 'down\nup')"
+          npm run build
+          npm run build:server
+          git rev-parse HEAD > build/commit.txt
+      - name: Import the Developer ID into an isolated temporary keychain
+        env:
+          APPLE_CERT_P12: ${{ secrets.APPLE_CERT_P12 }}
+          APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          test -n "$APPLE_CERT_P12" && test -n "$APPLE_CERT_PASSWORD"
+          kc="$RUNNER_TEMP/dzimplei-build.keychain-db"
+          certificate="$RUNNER_TEMP/dzimplei-cert.p12"
+          trap 'rm -f "$certificate"' EXIT
+          password=$(uuidgen)
+          security create-keychain -p "$password" "$kc"
+          security set-keychain-settings -lut 21600 "$kc"
+          security unlock-keychain -p "$password" "$kc"
+          printf '%s' "$APPLE_CERT_P12" | base64 -D > "$certificate"
+          security import "$certificate" -k "$kc" -P "$APPLE_CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$password" "$kc" >/dev/null
+          security list-keychains -d user -s "$kc"
+          security find-identity -v -p codesigning "$kc" | grep -Fq "$DZ_SIGN_IDENTITY"
+      - name: Package and verify the Developer ID app
+        run: |
+          npx electron-builder --mac --arm64 --dir --publish never -c.mac.notarize=false
+          app=release/mac-arm64/dzimplei.app
+          codesign --verify --deep --strict "$app"
+          info=$(codesign -dv --verbose=4 "$app" 2>&1)
+          printf '%s\n' "$info" | grep -Fq "Authority=$DZ_SIGN_IDENTITY"
+          printf '%s\n' "$info" | grep -Fq 'TeamIdentifier=295SBJ736K'
+          printf '%s\n' "$info" | grep -q 'flags=.*runtime'
+          node scripts/desktop-acceptance.mjs "$app/Contents/MacOS/dzimplei" "$app/Contents/Resources/app"
+          node scripts/desktop-manifest.mjs "$app/Contents/Resources/app" darwin release/desktop-mac-manifest.json
+      - name: Notarise and staple the app before archiving it
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          test -n "$APPLE_ID" && test "$APPLE_TEAM_ID" = 295SBJ736K && test -n "$APPLE_APP_SPECIFIC_PASSWORD"
+          xcrun notarytool store-credentials dzimplei \
+            --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+            --keychain "$RUNNER_TEMP/dzimplei-build.keychain-db"
+          app=release/mac-arm64/dzimplei.app
+          ditto -c -k --sequesterRsrc --keepParent "$app" "$RUNNER_TEMP/dzimplei-notary.zip"
+          xcrun notarytool submit "$RUNNER_TEMP/dzimplei-notary.zip" \
+            --keychain-profile dzimplei --keychain "$RUNNER_TEMP/dzimplei-build.keychain-db" \
+            --wait --output-format json > "$RUNNER_TEMP/notary-app.json"
+          node -e 'if (JSON.parse(require("fs").readFileSync(process.env.RUNNER_TEMP + "/notary-app.json")).status !== "Accepted") throw Error("App notarisation not accepted")'
+          xcrun stapler staple "$app"
+          xcrun stapler validate "$app"
+          codesign --verify --deep --strict "$app"
+          spctl --assess --type exec --verbose=4 "$app"
+      - name: Archive the stapled app and notarise the DMG
+        run: |
+          app=release/mac-arm64/dzimplei.app
+          npx electron-builder --prepackaged "$app" --mac dmg zip --arm64 --publish never -c.mac.notarize=false
+          dmg=release/dzimplei-0.8.11-arm64.dmg
+          test -f "$dmg"
+          codesign --force --sign "$DZ_SIGN_IDENTITY" "$dmg"
+          codesign --verify --strict "$dmg"
+          xcrun notarytool submit "$dmg" \
+            --keychain-profile dzimplei --keychain "$RUNNER_TEMP/dzimplei-build.keychain-db" \
+            --wait --output-format json > "$RUNNER_TEMP/notary-dmg.json"
+          node -e 'if (JSON.parse(require("fs").readFileSync(process.env.RUNNER_TEMP + "/notary-dmg.json")).status !== "Accepted") throw Error("DMG notarisation not accepted")'
+          xcrun stapler staple "$dmg"
+          xcrun stapler validate "$dmg"
+          spctl --assess --type open --context context:primary-signature --verbose=4 "$dmg"
+          xcrun stapler validate "$app"
+          codesign --verify --deep --strict "$app"
+      - name: Verify the archived app and refresh final package checksums
+        run: |
+          archive=release/dzimplei-0.8.11-arm64-mac.zip
+          test -f "$archive"
+          ditto -x -k "$archive" "$RUNNER_TEMP/archived-app"
+          app="$RUNNER_TEMP/archived-app/dzimplei.app"
+          codesign --verify --deep --strict "$app"
+          xcrun stapler validate "$app"
+          spctl --assess --type exec --verbose=4 "$app"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const crypto = require('node:crypto');
+          const { execFileSync } = require('node:child_process');
+          const yaml = require('js-yaml');
+          const builder = require('app-builder-bin').appBuilderPath;
+          const feedPath = 'release/latest-mac.yml';
+          const feed = yaml.load(fs.readFileSync(feedPath, 'utf8'));
+          if (feed.version !== '0.8.11') throw Error('Wrong feed version');
+          const expected = new Set(['dzimplei-0.8.11-arm64-mac.zip', 'dzimplei-0.8.11-arm64.dmg']);
+          const checksums = [];
+          for (const file of feed.files) {
+            if (!expected.delete(file.url) || path.basename(file.url) !== file.url) throw Error('Unexpected package');
+            const filename = path.join('release', file.url);
+            execFileSync(builder, ['blockmap', '--input', filename, '--output', filename + '.blockmap']);
+            const bytes = fs.readFileSync(filename);
+            file.size = bytes.length;
+            file.sha512 = crypto.createHash('sha512').update(bytes).digest('base64');
+            delete file.blockMapSize;
+            checksums.push({ name: file.url, size: file.size, sha512: file.sha512, sha256: crypto.createHash('sha256').update(bytes).digest('hex') });
+          }
+          if (expected.size) throw Error('Missing packages');
+          const primary = feed.files.find(file => file.url === feed.path);
+          if (!primary) throw Error('Missing primary archive');
+          feed.sha512 = primary.sha512;
+          feed.sourceRevision = fs.readFileSync('build/commit.txt', 'utf8').trim();
+          fs.writeFileSync(feedPath, yaml.dump(feed));
+          fs.writeFileSync('release/checksums-mac.json', JSON.stringify({ version: feed.version, sourceRevision: feed.sourceRevision, files: checksums }, null, 2) + '\n');
+          NODE
+      - name: Remove temporary signing material
+        if: always()
+        run: |
+          set +x
+          rm -f "$RUNNER_TEMP/dzimplei-cert.p12" "$RUNNER_TEMP/dzimplei-notary.zip"
+          kc="$RUNNER_TEMP/dzimplei-build.keychain-db"
+          if [ -f "$kc" ]; then security delete-keychain "$kc"; fi
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: dzimplei-mac-arm64
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            release/*.dmg
+            release/*-mac.zip
+            release/*.blockmap
+            release/latest-mac.yml
+            release/checksums-mac.json
+            release/desktop-mac-manifest.json
