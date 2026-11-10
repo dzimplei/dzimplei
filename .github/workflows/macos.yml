@@ -53,7 +53,7 @@ jobs:
           version: 0.16.0
       - name: Build the pinned terminal runtime
         run: |
-          cargo build --manifest-path third_party/herdr-core/Cargo.toml --release --locked --target aarch64-apple-darwin -p herdr-core
+          (cd third_party/herdr-core && cargo build --release --locked --target aarch64-apple-darwin -p herdr-core)
           mkdir -p build
           cp third_party/herdr-core/target/aarch64-apple-darwin/release/herdr-core build/herdr-core
           cp third_party/herdr-core/LICENSE build/herdr-core.LICENSE
@@ -156,31 +156,33 @@ jobs:
           const fs = require('node:fs');
           const path = require('node:path');
           const crypto = require('node:crypto');
-          const { execFileSync } = require('node:child_process');
           const yaml = require('js-yaml');
-          const builder = require('app-builder-bin').appBuilderPath;
-          const feedPath = 'release/latest-mac.yml';
-          const feed = yaml.load(fs.readFileSync(feedPath, 'utf8'));
-          if (feed.version !== '0.8.11') throw Error('Wrong feed version');
-          const expected = new Set(['dzimplei-0.8.11-arm64-mac.zip', 'dzimplei-0.8.11-arm64.dmg']);
-          const checksums = [];
-          for (const file of feed.files) {
-            if (!expected.delete(file.url) || path.basename(file.url) !== file.url) throw Error('Unexpected package');
-            const filename = path.join('release', file.url);
-            execFileSync(builder, ['blockmap', '--input', filename, '--output', filename + '.blockmap']);
-            const bytes = fs.readFileSync(filename);
-            file.size = bytes.length;
-            file.sha512 = crypto.createHash('sha512').update(bytes).digest('base64');
-            delete file.blockMapSize;
-            checksums.push({ name: file.url, size: file.size, sha512: file.sha512, sha256: crypto.createHash('sha256').update(bytes).digest('hex') });
+          const { buildBlockMap } = require('app-builder-lib/out/targets/blockmap/blockmap');
+          async function refresh() {
+            const feedPath = 'release/latest-mac.yml';
+            const feed = yaml.load(fs.readFileSync(feedPath, 'utf8'));
+            if (feed.version !== '0.8.11') throw Error('Wrong feed version');
+            const expected = new Set(['dzimplei-0.8.11-arm64-mac.zip', 'dzimplei-0.8.11-arm64.dmg']);
+            const checksums = [];
+            for (const file of feed.files) {
+              if (!expected.delete(file.url) || path.basename(file.url) !== file.url) throw Error('Unexpected package');
+              const filename = path.join('release', file.url);
+              await buildBlockMap(filename, 'gzip', filename + '.blockmap');
+              const bytes = fs.readFileSync(filename);
+              file.size = bytes.length;
+              file.sha512 = crypto.createHash('sha512').update(bytes).digest('base64');
+              delete file.blockMapSize;
+              checksums.push({ name: file.url, size: file.size, sha512: file.sha512, sha256: crypto.createHash('sha256').update(bytes).digest('hex') });
+            }
+            if (expected.size) throw Error('Missing packages');
+            const primary = feed.files.find(file => file.url === feed.path);
+            if (!primary) throw Error('Missing primary archive');
+            feed.sha512 = primary.sha512;
+            feed.sourceRevision = fs.readFileSync('build/commit.txt', 'utf8').trim();
+            fs.writeFileSync(feedPath, yaml.dump(feed));
+            fs.writeFileSync('release/checksums-mac.json', JSON.stringify({ version: feed.version, sourceRevision: feed.sourceRevision, files: checksums }, null, 2) + '\n');
           }
-          if (expected.size) throw Error('Missing packages');
-          const primary = feed.files.find(file => file.url === feed.path);
-          if (!primary) throw Error('Missing primary archive');
-          feed.sha512 = primary.sha512;
-          feed.sourceRevision = fs.readFileSync('build/commit.txt', 'utf8').trim();
-          fs.writeFileSync(feedPath, yaml.dump(feed));
-          fs.writeFileSync('release/checksums-mac.json', JSON.stringify({ version: feed.version, sourceRevision: feed.sourceRevision, files: checksums }, null, 2) + '\n');
+          refresh().catch(error => { console.error(error.message); process.exitCode = 1; });
           NODE
       - name: Remove temporary signing material
         if: always()
