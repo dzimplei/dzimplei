@@ -1,6 +1,6 @@
 cask "dzimplei" do
-  version "0.9.0"
-  sha256 "a81572420c4989cdc7162dd7cb4e2358ff9521dded0493d6952019f4a45dfb76"
+  version "0.9.1"
+  sha256 "0f6bc933d3df23ad853ffd0078c02d2f45612b4836a7aa6d2f600114aae13bd6"
 
   url "https://github.com/t-shark-9/dzimplei/releases/download/v#{version}/dzimplei-mac-arm64.dmg"
   name "dzimplei"
@@ -17,17 +17,6 @@ cask "dzimplei" do
   depends_on arch: :arm64
 
   app "dzimplei.app"
-
-  # The app is signed with dzimplei's own certificate, not an Apple Developer
-  # ID, so macOS would refuse the first launch of a quarantined copy. You chose
-  # to install it with brew; this clears the quarantine flag on that copy only.
-  # (Legacy postflight block: this tap is third-party, where Homebrew still
-  # accepts it; the declarative postflight_steps has no way to run xattr.)
-  postflight do
-    system_command "/usr/bin/xattr",
-                   args:         ["-dr", "com.apple.quarantine", "#{appdir}/dzimplei.app"],
-                   must_succeed: false
-  end
 
   # Caches and preferences only. Your workspaces and chats live in
   # ~/Library/Application Support/dzimplei and are never removed by brew.
