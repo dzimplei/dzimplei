@@ -1,0 +1,40 @@
+name: Recover source deploy public key
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-key:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Derive only the public key and fingerprint
+        shell: bash
+        env:
+          SOURCE_DEPLOY_KEY: ${{ secrets.SOURCE_DEPLOY_KEY }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          key_file=$(mktemp "$RUNNER_TEMP/source-deploy-key.XXXXXX")
+          trap 'rm -f "$key_file"' EXIT
+          printf '%s\n' "$SOURCE_DEPLOY_KEY" > "$key_file"
+          unset SOURCE_DEPLOY_KEY
+          if ! public_key=$(ssh-keygen -y -P '' -f "$key_file" </dev/null 2>/dev/null); then
+            printf '%s\n' 'Key derivation failed: missing, malformed or passphrase-protected key.' >&2
+            exit 1
+          fi
+          read -r key_type key_data remainder <<< "$public_key"
+          public_key="$key_type $key_data"
+          if [[ ! "$public_key" =~ ^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp(256|384|521)|sk-ssh-ed25519@openssh.com|sk-ecdsa-sha2-nistp256@openssh.com)\ [A-Za-z0-9+/]+={0,2}$ ]]; then
+            printf '%s\n' 'Invalid derived public-key format.' >&2
+            exit 1
+          fi
+          if ! fingerprint=$(printf '%s\n' "$public_key" | ssh-keygen -l -E sha256 -f /dev/stdin 2>/dev/null); then
+            printf '%s\n' 'Invalid derived public key.' >&2
+            exit 1
+          fi
+          printf '%s\n' "$public_key" "$fingerprint"
