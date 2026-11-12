@@ -1,0 +1,87 @@
+name: server
+# Public runner, private source checkout. Artifacts contain only the release
+# payload; deployment credentials stay on the operator's machine.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "dzimplei-source commit to build"
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: server-${{ inputs.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-22.04-arm
+    timeout-minutes: 75
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+      CI: "1"
+      DZ_BASE: /dzimplei/
+      HERDR_TARGET: aarch64-unknown-linux-musl
+      HERDR_SUFFIX: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: dzimplei/dzimplei-source
+          ref: ${{ inputs.ref }}
+          submodules: recursive
+          ssh-key: ${{ secrets.SOURCE_DEPLOY_KEY }}
+          persist-credentials: false
+      - name: Record the source revision
+        run: echo "SOURCE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: 1.95.0
+          targets: ${{ env.HERDR_TARGET }}
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2.2.1
+        with:
+          version: 0.16.0
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: third_party/herdr-core -> target
+          key: terminal-core-${{ env.HERDR_TARGET }}
+      - name: Build the pinned source and lockfile
+        working-directory: third_party/herdr-core
+        run: cargo build --release --locked --target "$HERDR_TARGET" -p herdr-core
+      - name: Assemble the internal runtime and license notices
+        run: |
+          mkdir -p build
+          cp "third_party/herdr-core/target/$HERDR_TARGET/release/herdr-core$HERDR_SUFFIX" "build/herdr-core$HERDR_SUFFIX"
+          chmod +x "build/herdr-core$HERDR_SUFFIX"
+          cp third_party/herdr-core/LICENSE build/herdr-core.LICENSE
+          "build/herdr-core$HERDR_SUFFIX" --licenses > build/herdr-core.NOTICES
+          printf 'source=%s\nghostty=%s\nrust=1.95.0\nzig=0.16.0\nprotocol=1\ntarget=%s\n' "$(git -C third_party/herdr-core rev-parse HEAD)" "$(git -C third_party/herdr-core/vendor/ghostty rev-parse HEAD)" "$HERDR_TARGET" > build/herdr-core.SOURCE
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Verify the terminal and Jim handoff
+        env:
+          HERDR_TEST_BINARY: ${{ github.workspace }}/build/herdr-core
+        run: node --test server/herdrTerminal.test.mjs server/jim/queuedSession.test.mjs server/jim/replyError.test.mjs server/jim/idempotency.test.mjs
+      - name: Build the prototype release
+        run: npm run build && npm run build:server
+      - name: Package the Linux ARM64 server
+        run: |
+          mkdir out
+          cp package.json package-lock.json out/
+          npm ci --prefix out --omit=dev --ignore-scripts --os=linux --cpu=arm64
+          cp -r dist build scripts engine extension out/
+          rm -rf out/build/codex out/build/codex-code-mode-host out/build/peekaboo out/build/tools
+          printf '%s\n' "$SOURCE_SHA" > out/build/commit.txt
+          tar -czf release.tgz -C out .
+          sha256sum release.tgz | tee release.sha256
+          printf '%s\n' "$SOURCE_SHA" > release-source.txt
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: dzimplei-server
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            release.tgz
+            release.sha256
+            release-source.txt
