@@ -20,16 +20,27 @@ env:
   DZ_BASE: /dzimplei/
 
 jobs:
+  terminal:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [linux-x64, linux-arm64]
+    uses: ./.github/workflows/terminal-core.yml
+    with:
+      ref: ${{ inputs.ref }}
+      platform: ${{ matrix.platform }}
+    secrets: inherit
   build:
+    needs: terminal
     strategy:
       fail-fast: false
       matrix:
         include:
           - arch: x64
-            runner: ubuntu-latest
+            runner: ubuntu-22.04
             targets: "AppImage deb"
           - arch: arm64
-            runner: ubuntu-24.04-arm
+            runner: ubuntu-22.04-arm
             targets: "AppImage"
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
@@ -52,6 +63,14 @@ jobs:
           bin=$(ls "$(npm root -g)"/@openai/codex/node_modules/@openai/codex-linux-*/vendor/*/bin/codex | head -1)
           test -n "$bin" || { echo "::error::codex not found"; exit 1; }
           echo "CODEX_BIN=$bin" >> "$GITHUB_ENV"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: terminal-core-linux-${{ matrix.arch }}
+          path: build
+      - name: Record source revision and terminal permissions
+        run: |
+          chmod +x build/herdr-core
+          git rev-parse HEAD > build/commit.txt
       - run: npm run build
       - run: npm run build:server
       - run: npx electron-builder --linux ${{ matrix.targets }} --${{ matrix.arch }} --publish never
@@ -66,6 +85,11 @@ jobs:
           test -n "$eng" || { echo "::error::no engine inside $img"; exit 1; }
           "$eng" --version | grep -q " $(tr -d '[:space:]' < ../scripts/codex-version)$" || { echo "::error::engine is not the pinned version"; "$eng" --version; exit 1; }
           rm -rf squashfs-root
+      - name: Verify the packaged Linux runtime
+        run: |
+          node scripts/desktop-acceptance.mjs release/linux${{ matrix.arch == 'arm64' && '-arm64' || '' }}-unpacked/dzimplei release/linux${{ matrix.arch == 'arm64' && '-arm64' || '' }}-unpacked/resources/app
+          node scripts/desktop-manifest.mjs release/linux${{ matrix.arch == 'arm64' && '-arm64' || '' }}-unpacked/resources/app linux release/desktop-linux-${{ matrix.arch }}-manifest.json
+          for feed in release/latest-linux*.yml; do printf '\nsourceRevision: %s\n' "$(git rev-parse HEAD)" >> "$feed"; done
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: dzimplei-linux-${{ matrix.arch }}
@@ -76,3 +100,4 @@ jobs:
             release/*.deb
             release/*.blockmap
             release/latest-linux*.yml
+            release/desktop-linux-*-manifest.json
