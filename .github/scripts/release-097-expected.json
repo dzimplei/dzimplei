@@ -1,0 +1,112 @@
+{
+  "feeds": {
+    "latest-linux-arm64.yml": {
+      "version": "0.9.7",
+      "files": [
+        {
+          "url": "dzimplei-0.9.7-arm64.AppImage",
+          "sha512": "gMqIIvXZP1AM0zroHx2UrSZgtLVtHq/EkMylp4GD/7OyX7GPJArJqlNhWNhHtBk5eTJdwOd4Y4YNEU3E2M+0Qw==",
+          "size": 561925326,
+          "blockMapSize": 583706
+        }
+      ],
+      "path": "dzimplei-0.9.7-arm64.AppImage",
+      "sha512": "gMqIIvXZP1AM0zroHx2UrSZgtLVtHq/EkMylp4GD/7OyX7GPJArJqlNhWNhHtBk5eTJdwOd4Y4YNEU3E2M+0Qw==",
+      "releaseDate": "2026-11-14T20:35:42.593Z",
+      "sourceRevision": "9c8558efb13d8f10b2ce29137c5adbfcf2a627a4"
+    },
+    "latest-linux.yml": {
+      "version": "0.9.7",
+      "files": [
+        {
+          "url": "dzimplei-0.9.7.AppImage",
+          "sha512": "TxSCUF0E5F8bG4CM8ekgn40DUTcQSu6vWEhqbsINZp3PCXMllpCiZohovNw7bWuKc562RDjBs7rKBk3S3envng==",
+          "size": 562353935,
+          "blockMapSize": 587555
+        },
+        {
+          "url": "dzimplei_0.9.7_amd64.deb",
+          "sha512": "bm9jQrG3IHM2Z8feq5/KNl8AoFd/75BaRIFIhZG00tYZyQiIUJvDAUDCga58prKuoU3372SJSmdGWfRsCBsZzQ==",
+          "size": 652733868
+        }
+      ],
+      "path": "dzimplei-0.9.7.AppImage",
+      "sha512": "TxSCUF0E5F8bG4CM8ekgn40DUTcQSu6vWEhqbsINZp3PCXMllpCiZohovNw7bWuKc562RDjBs7rKBk3S3envng==",
+      "releaseDate": "2026-11-14T20:43:59.411Z",
+      "sourceRevision": "9c8558efb13d8f10b2ce29137c5adbfcf2a627a4"
+    },
+    "latest-mac.yml": {
+      "version": "0.9.7",
+      "files": [
+        {
+          "url": "dzimplei-0.9.7-arm64-mac.zip",
+          "sha512": "tF69McPwNehQ6bTnqodNsiEPeh5Rn/cD9lLiO7VjN+7lpwI62isOsx+5RjGobcVqCL42+JLiOM6YsEtlZVjrpQ==",
+          "size": 681961518
+        },
+        {
+          "url": "dzimplei-0.9.7-arm64.dmg",
+          "sha512": "UapEto4hy39daSpvuaxv31GM1ghQqlBAeVfAFCjGvE/Kh8wOxY4EiZChNBqVwcisSZslDBBklWkXc0qNA/3fQQ==",
+          "size": 690625118
+        }
+      ],
+      "path": "dzimplei-0.9.7-arm64-mac.zip",
+      "sha512": "tF69McPwNehQ6bTnqodNsiEPeh5Rn/cD9lLiO7VjN+7lpwI62isOsx+5RjGobcVqCL42+JLiOM6YsEtlZVjrpQ==",
+      "releaseDate": "2026-11-14T20:44:17.447Z",
+      "sourceRevision": "9c8558efb13d8f10b2ce29137c5adbfcf2a627a4"
+    },
+    "latest.yml": {
+      "version": "0.9.7",
+      "files": [
+        {
+          "url": "dzimplei-Setup-0.9.7.exe",
+          "sha512": "UXOfJdwouDPzEC6Ui1YmD1kBPCxeKllC03E3I2ZNuSNgVUyc3hj+V/aWr8Q8/iFQyiDT5QlrhPKTMBC7W51ZWw==",
+          "size": 642960875
+        }
+      ],
+      "path": "dzimplei-Setup-0.9.7.exe",
+      "sha512": "UXOfJdwouDPzEC6Ui1YmD1kBPCxeKllC03E3I2ZNuSNgVUyc3hj+V/aWr8Q8/iFQyiDT5QlrhPKTMBC7W51ZWw==",
+      "releaseDate": "2026-11-14T20:37:41.869Z",
+      "sourceRevision": "9c8558efb13d8f10b2ce29137c5adbfcf2a627a4"
+    }
+  },
+  "assets": {
+    "dzimplei-0.9.7-arm64.AppImage": {
+      "url": "dzimplei-0.9.7-arm64.AppImage",
+      "sha512": "gMqIIvXZP1AM0zroHx2UrSZgtLVtHq/EkMylp4GD/7OyX7GPJArJqlNhWNhHtBk5eTJdwOd4Y4YNEU3E2M+0Qw==",
+      "size": 561925326,
+      "blockMapSize": 583706
+    },
+    "dzimplei-0.9.7.AppImage": {
+      "url": "dzimplei-0.9.7.AppImage",
+      "sha512": "TxSCUF0E5F8bG4CM8ekgn40DUTcQSu6vWEhqbsINZp3PCXMllpCiZohovNw7bWuKc562RDjBs7rKBk3S3envng==",
+      "size": 562353935,
+      "blockMapSize": 587555
+    },
+    "dzimplei_0.9.7_amd64.deb": {
+      "url": "dzimplei_0.9.7_amd64.deb",
+      "sha512": "bm9jQrG3IHM2Z8feq5/KNl8AoFd/75BaRIFIhZG00tYZyQiIUJvDAUDCga58prKuoU3372SJSmdGWfRsCBsZzQ==",
+      "size": 652733868
+    },
+    "dzimplei-0.9.7-arm64-mac.zip": {
+      "url": "dzimplei-0.9.7-arm64-mac.zip",
+      "sha512": "tF69McPwNehQ6bTnqodNsiEPeh5Rn/cD9lLiO7VjN+7lpwI62isOsx+5RjGobcVqCL42+JLiOM6YsEtlZVjrpQ==",
+      "size": 681961518
+    },
+    "dzimplei-0.9.7-arm64.dmg": {
+      "url": "dzimplei-0.9.7-arm64.dmg",
+      "sha512": "UapEto4hy39daSpvuaxv31GM1ghQqlBAeVfAFCjGvE/Kh8wOxY4EiZChNBqVwcisSZslDBBklWkXc0qNA/3fQQ==",
+      "size": 690625118
+    },
+    "dzimplei-Setup-0.9.7.exe": {
+      "url": "dzimplei-Setup-0.9.7.exe",
+      "sha512": "UXOfJdwouDPzEC6Ui1YmD1kBPCxeKllC03E3I2ZNuSNgVUyc3hj+V/aWr8Q8/iFQyiDT5QlrhPKTMBC7W51ZWw==",
+      "size": 642960875
+    }
+  },
+  "rawFeeds": {
+    "latest-linux-arm64.yml": "version: 0.9.7\nfiles:\n  - url: dzimplei-0.9.7-arm64.AppImage\n    sha512: >-\n      gMqIIvXZP1AM0zroHx2UrSZgtLVtHq/EkMylp4GD/7OyX7GPJArJqlNhWNhHtBk5eTJdwOd4Y4YNEU3E2M+0Qw==\n    size: 561925326\n    blockMapSize: 583706\npath: dzimplei-0.9.7-arm64.AppImage\nsha512: >-\n  gMqIIvXZP1AM0zroHx2UrSZgtLVtHq/EkMylp4GD/7OyX7GPJArJqlNhWNhHtBk5eTJdwOd4Y4YNEU3E2M+0Qw==\nreleaseDate: '2026-11-14T20:35:42.593Z'\nsourceRevision: 9c8558efb13d8f10b2ce29137c5adbfcf2a627a4\n",
+    "latest-linux.yml": "version: 0.9.7\nfiles:\n  - url: dzimplei-0.9.7.AppImage\n    sha512: >-\n      TxSCUF0E5F8bG4CM8ekgn40DUTcQSu6vWEhqbsINZp3PCXMllpCiZohovNw7bWuKc562RDjBs7rKBk3S3envng==\n    size: 562353935\n    blockMapSize: 587555\n  - url: dzimplei_0.9.7_amd64.deb\n    sha512: >-\n      bm9jQrG3IHM2Z8feq5/KNl8AoFd/75BaRIFIhZG00tYZyQiIUJvDAUDCga58prKuoU3372SJSmdGWfRsCBsZzQ==\n    size: 652733868\npath: dzimplei-0.9.7.AppImage\nsha512: >-\n  TxSCUF0E5F8bG4CM8ekgn40DUTcQSu6vWEhqbsINZp3PCXMllpCiZohovNw7bWuKc562RDjBs7rKBk3S3envng==\nreleaseDate: '2026-11-14T20:43:59.411Z'\nsourceRevision: 9c8558efb13d8f10b2ce29137c5adbfcf2a627a4\n",
+    "latest-mac.yml": "version: 0.9.7\nfiles:\n  - url: dzimplei-0.9.7-arm64-mac.zip\n    sha512: >-\n      tF69McPwNehQ6bTnqodNsiEPeh5Rn/cD9lLiO7VjN+7lpwI62isOsx+5RjGobcVqCL42+JLiOM6YsEtlZVjrpQ==\n    size: 681961518\n  - url: dzimplei-0.9.7-arm64.dmg\n    sha512: >-\n      UapEto4hy39daSpvuaxv31GM1ghQqlBAeVfAFCjGvE/Kh8wOxY4EiZChNBqVwcisSZslDBBklWkXc0qNA/3fQQ==\n    size: 690625118\npath: dzimplei-0.9.7-arm64-mac.zip\nsha512: >-\n  tF69McPwNehQ6bTnqodNsiEPeh5Rn/cD9lLiO7VjN+7lpwI62isOsx+5RjGobcVqCL42+JLiOM6YsEtlZVjrpQ==\nreleaseDate: '2026-11-14T20:44:17.447Z'\nsourceRevision: 9c8558efb13d8f10b2ce29137c5adbfcf2a627a4\n",
+    "latest.yml": "version: 0.9.7\nfiles:\n  - url: dzimplei-Setup-0.9.7.exe\n    sha512: >-\n      UXOfJdwouDPzEC6Ui1YmD1kBPCxeKllC03E3I2ZNuSNgVUyc3hj+V/aWr8Q8/iFQyiDT5QlrhPKTMBC7W51ZWw==\n    size: 642960875\npath: dzimplei-Setup-0.9.7.exe\nsha512: >-\n  UXOfJdwouDPzEC6Ui1YmD1kBPCxeKllC03E3I2ZNuSNgVUyc3hj+V/aWr8Q8/iFQyiDT5QlrhPKTMBC7W51ZWw==\nreleaseDate: '2026-11-14T20:37:41.869Z'\nsourceRevision: 9c8558efb13d8f10b2ce29137c5adbfcf2a627a4\n"
+  }
+}
