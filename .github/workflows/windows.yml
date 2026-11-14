@@ -24,7 +24,14 @@ env:
   DZ_BASE: /dzimplei/
 
 jobs:
+  terminal:
+    uses: ./.github/workflows/terminal-core.yml
+    with:
+      ref: ${{ inputs.ref }}
+      platform: win32-x64
+    secrets: inherit
   build:
+    needs: terminal
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
@@ -48,9 +55,22 @@ jobs:
           bin=$(ls "$(npm root -g)"/@openai/codex/node_modules/@openai/codex-win32-*/vendor/*/bin/codex.exe | head -1)
           test -n "$bin" || { echo "::error::codex.exe not found"; exit 1; }
           echo "CODEX_BIN=$(cygpath -w "$bin")" >> "$GITHUB_ENV"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: terminal-core-win32-x64
+          path: build
+      - name: Record source revision
+        shell: bash
+        run: git rev-parse HEAD > build/commit.txt
       - run: npm run build
       - run: npm run build:server
       - run: npx electron-builder --win --publish never
+      - name: Verify the packaged Windows runtime
+        shell: bash
+        run: |
+          node scripts/desktop-acceptance.mjs release/win-unpacked/dzimplei.exe release/win-unpacked/resources/app
+          node scripts/desktop-manifest.mjs release/win-unpacked/resources/app win32 release/desktop-windows-manifest.json
+          printf '\nsourceRevision: %s\n' "$(git rev-parse HEAD)" >> release/latest.yml
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: dzimplei-windows
@@ -60,3 +80,4 @@ jobs:
             release/*.exe
             release/*.blockmap
             release/latest.yml
+            release/desktop-windows-manifest.json
