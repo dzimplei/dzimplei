@@ -1,0 +1,52 @@
+# The browser tests the build host cannot run, run in the PUBLIC repo dzimplei/dzimplei so they cost nothing (see public-windows.yml for why: a public repo's Actions
+# minutes are free, this source repo is private and billed). This file is the copy that lives at dzimplei/dzimplei/.github/workflows/browser-tests.yml; keep the two equal.
+# docs/BUILD-HOST.md.
+#
+# scripts/verify-remote.sh pushes the commit under test to refs/verify/<sha> of the private source, dispatches this with that sha and waits for the conclusion.
+# WHICH files run is not written here: it is DZ_REMOTE_EXCLUDE in scripts/build-host.sh of the commit under test, read after the checkout, so the list has one home.
+#
+# It checks out the PRIVATE source with the read-only deploy key (secret SOURCE_DEPLOY_KEY here). A public repo's logs are public: this prints test names and results,
+# never secrets (GitHub masks the key), and the tests run on fixtures with fake keys. Keep it that way: no `env`, `set -x` or `cat` of config in here, nothing uploaded.
+name: browser-tests
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "dzimplei-source commit to test"
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browser-tests-${{ inputs.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+      CI: "1" # the tests start Chromium with --no-sandbox when CI is set (a runner has no user namespaces for it)
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: dzimplei/dzimplei-source
+          ref: ${{ inputs.ref }}
+          ssh-key: ${{ secrets.SOURCE_DEPLOY_KEY }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run build:server
+      # Chromium is the runner's own Google Chrome (/usr/bin/google-chrome), which server/serverBrowser.ts findChromium() looks for; the tests fail loudly without one.
+      - name: the test files that run here (DZ_REMOTE_EXCLUDE)
+        run: |
+          . scripts/build-host.sh
+          test -n "$DZ_REMOTE_EXCLUDE" || { echo "::error::DZ_REMOTE_EXCLUDE is empty"; exit 1; }
+          google-chrome --version
+          node scripts/test.mjs only $DZ_REMOTE_EXCLUDE
