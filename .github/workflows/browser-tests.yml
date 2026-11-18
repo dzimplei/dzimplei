@@ -8,6 +8,8 @@
 # It checks out the PRIVATE source with the read-only deploy key (secret SOURCE_DEPLOY_KEY here). A public repo's logs are public: this prints test names and results,
 # never secrets (GitHub masks the key), and the tests run on fixtures with fake keys. Keep it that way: no `env`, `set -x` or `cat` of config in here, nothing uploaded.
 name: browser-tests
+# The title carries the commit: scripts/verify-remote.sh finds its run by it.
+run-name: browser tests ${{ inputs.ref }}
 on:
   workflow_dispatch:
     inputs:
