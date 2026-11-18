@@ -72,15 +72,6 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      # The agent engine ships INSIDE the app (scripts/bundle-engine.mjs); see the
-      # note in the old desktop.yml: the runner's npm prefix is not where it looks.
-      - name: codex engine, at the version the server runs
-        shell: bash
-        run: |
-          npm i -g "@openai/codex@$(tr -d '[:space:]' < scripts/codex-version)"
-          bin=$(ls "$(npm root -g)"/@openai/codex/node_modules/@openai/codex-win32-*/vendor/*/bin/codex.exe | head -1)
-          test -n "$bin" || { echo "::error::codex.exe not found"; exit 1; }
-          echo "CODEX_BIN=$(cygpath -w "$bin")" >> "$GITHUB_ENV"
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: terminal-core-win32-x64
