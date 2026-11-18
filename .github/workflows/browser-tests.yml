@@ -31,6 +31,7 @@ jobs:
     env:
       ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
       CI: "1" # the tests start Chromium with --no-sandbox when CI is set (a runner has no user namespaces for it)
+      DZ_BROWSER_MAX_RSS_MB: "4096" # server/serverBrowser.ts closes a browser over 1536 MB; software-rendered WebGL pages on a runner go over it (16 GB runner)
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
